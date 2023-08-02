@@ -32,19 +32,27 @@ const run = async () => {
 		app.post("/products", async (req, res) => {
 			const product = req.body;
 
-			const result = await productCollection.insertOne(product);
+			const result = await productCollection.insertMany(product);
 
 			res.send(result);
 		});
 
-		app.get("/products/:category", async (req, res) => {
+
+		app.get("/products/:category*", async (req, res) => {
 			const { category } = req.params;
+			const decodedCategory = decodeURIComponent(category);
+			const regexCategory = new RegExp(decodedCategory, "i");
 
-			const result = await productCollection.find({ category });
-			res.send(result);
+			const cursor = await productCollection.find({
+				category: regexCategory,
+			});
+			const products = await cursor.toArray();
+
+			res.send({ status: true, data: products });
 		});
 
-		app.get("/products/:id", async (req, res) => {
+
+		app.get("/product/:id", async (req, res) => {
 			const id = req.params.id;
 
 			const result = await productCollection.findOne({
@@ -53,7 +61,7 @@ const run = async () => {
 			res.send(result);
 		});
 
-		app.delete("/products/:id", async (req, res) => {
+		app.delete("/product/:id", async (req, res) => {
 			const id = req.params.id;
 
 			const result = await productCollection.deleteOne({

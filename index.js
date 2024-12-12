@@ -18,7 +18,7 @@ const client = new MongoClient(uri, {
 
 const run = async () => {
 	try {
-		const db = client.db("pc-builder");
+		const db = client.db("sunnah-store");
 		console.log("DB connection established");
 		const productCollection = db.collection("products");
 

@@ -1,6 +1,6 @@
 require("dotenv").config();
 const express = require("express");
-const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const { MongoClient, ServerApiVersion} = require("mongodb");
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -56,7 +56,7 @@ const run = async () => {
 			const id = req.params.id;
 
 			const result = await productCollection.findOne({
-				_id: ObjectId(id),
+				_id: id,
 			});
 			res.send(result);
 		});
@@ -65,7 +65,7 @@ const run = async () => {
 			const id = req.params.id;
 
 			const result = await productCollection.deleteOne({
-				_id: ObjectId(id),
+				_id: id,
 			});
 			// console.log(result);
 			res.send(result);
@@ -79,7 +79,7 @@ const run = async () => {
 			// console.log(comment);
 
 			const result = await productCollection.updateOne(
-				{ _id: ObjectId(productId) },
+				{ _id: productId },
 				{ $push: { comments: comment } }
 			);
 
@@ -101,7 +101,7 @@ const run = async () => {
 			const productId = req.params.id;
 
 			const result = await productCollection.findOne(
-				{ _id: ObjectId(productId) },
+				{ _id: productId },
 				{ projection: { _id: 0, comments: 1 } }
 			);
 

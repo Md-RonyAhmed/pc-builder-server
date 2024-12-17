@@ -23,11 +23,22 @@ const run = async () => {
 		const productCollection = db.collection("products");
 
 		app.get("/products", async (req, res) => {
-			const cursor = productCollection.find({});
-			const product = await cursor.toArray();
+  try {
+    // Get the total number of products
+    const totalProducts = await productCollection.countDocuments();
 
-			res.send({ status: true, data: product });
-		});
+    // Use $sample to randomly select all products
+    const products = await productCollection.aggregate([
+      { $sample: { size: totalProducts } }
+    ]).toArray();
+
+    // Send the randomly ordered products
+    res.send({ status: true, data: products });
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    res.status(500).send({ status: false, message: "Internal Server Error" });
+  }
+});
 
 		app.post("/products", async (req, res) => {
 			const product = req.body;

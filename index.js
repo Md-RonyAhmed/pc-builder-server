@@ -55,9 +55,12 @@ const run = async () => {
       const decodedCategory = decodeURIComponent(category);
       const regexCategory = new RegExp(decodedCategory, "i");
 
-      const cursor = await productCollection.find({
-        category: regexCategory,
-      });
+      const cursor = await productCollection
+        .find({
+          category: regexCategory,
+        })
+        .sort({ $natural: -1 });
+
       const products = await cursor.toArray();
 
       res.send({ status: true, data: products });

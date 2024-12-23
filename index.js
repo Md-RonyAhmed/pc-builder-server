@@ -62,6 +62,7 @@ const run = async () => {
           .find({
             category: regexCategory,
           })
+          .sort({ $natural: -1 })
           .toArray();
 
         if (!matchingProducts?.length) {

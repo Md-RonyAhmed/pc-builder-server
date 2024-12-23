@@ -39,12 +39,10 @@ const run = async () => {
 
         // Get paginated and searched products
         const products = await productCollection
-          .aggregate([
-            { $match: searchQuery },
-            { $sample: { size: totalProducts } },
-            { $skip: skip },
-            { $limit: limit }
-          ])
+          .find(searchQuery)
+          .sort({ createdAt: -1 }) // Sort by newest first
+          .skip(skip)
+          .limit(limit)
           .toArray();
 
         if (!products?.length) {
@@ -99,27 +97,40 @@ const run = async () => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
+        const search = req.query.search || "";
 
         const decodedCategory = decodeURIComponent(category);
         const regexCategory = new RegExp(decodedCategory, "i");
 
-        // Get total count for pagination
-        const totalProducts = await productCollection.countDocuments({
+        // Create combined query for category and search
+        const query = {
           category: regexCategory,
-        });
+          ...(search ? { name: { $regex: search, $options: "i" } } : {})
+        };
+
+        // Get total count for pagination
+        const totalProducts = await productCollection.countDocuments(query);
 
         // Get paginated products
         const products = await productCollection
-          .aggregate([
-            { $match: { category: regexCategory } },
-            { $sample: { size: totalProducts } },
-            { $skip: skip },
-            { $limit: limit },
-          ])
+          .find(query)
+          .sort({ createdAt: -1 }) // Sort by newest first
+          .skip(skip)
+          .limit(limit)
           .toArray();
 
         if (!products?.length) {
-          return res.send({ status: false, error: "No products found" });
+          return res.send({
+            status: false,
+            error: "No products found",
+            data: [],
+            pagination: {
+              currentPage: page,
+              totalPages: 0,
+              totalProducts: 0,
+              productsPerPage: limit
+            }
+          });
         }
 
         res.send({
@@ -129,8 +140,8 @@ const run = async () => {
             currentPage: page,
             totalPages: Math.ceil(totalProducts / limit),
             totalProducts,
-            productsPerPage: limit,
-          },
+            productsPerPage: limit
+          }
         });
       } catch (error) {
         res.status(500).send({ status: false, error: "Internal server error" });

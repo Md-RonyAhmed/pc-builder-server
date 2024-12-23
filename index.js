@@ -22,6 +22,23 @@ const run = async () => {
     console.log("DB connection established");
     const productCollection = db.collection("products");
 
+    //get limited products
+    app.get("/products", async (req, res) => {
+      const limit = Number(req.query.limit);
+      const products = await productCollection
+        .find()
+        .sort({ $natural: -1 })
+        .limit(limit)
+        .toArray();
+      if (!products?.length) {
+        return res.send({ success: false, error: "No products found" });
+      }
+      res.send({
+        success: true,
+        data: products,
+      });
+    });
+
     app.get("/products", async (req, res) => {
       try {
         // Get the total number of products

@@ -60,7 +60,7 @@ const run = async () => {
         .find({
           category: regexCategory,
         })
-        .sort({ createdAt: -1 })
+        .sort({ $natural: -1 })
         .limit(limit);
 
       const products = await cursor.toArray();

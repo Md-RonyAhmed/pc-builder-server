@@ -53,30 +53,42 @@ const run = async () => {
     app.get("/products/:category*", async (req, res) => {
       try {
         const { category } = req.params;
-        const limit = Number(req.query.limit) || 0;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
         const decodedCategory = decodeURIComponent(category);
         const regexCategory = new RegExp(decodedCategory, "i");
 
-        // প্রথমে ক্যাটাগরি অনুযায়ী সব প্রোডাক্ট খুঁজে বের করি
-        const matchingProducts = await productCollection
-          .find({
-            category: regexCategory,
-          })
-          .toArray();
+        // Get total count for pagination
+        const totalProducts = await productCollection.countDocuments({
+          category: regexCategory,
+        });
 
-        if (!matchingProducts?.length) {
-          return res.send({ status: false, error: "No products found" });
-        }
-
-        // র‍্যান্ডমলি প্রোডাক্ট সিলেক্ট করি
-        const randomProducts = await productCollection
+        // Get paginated products
+        const products = await productCollection
           .aggregate([
             { $match: { category: regexCategory } },
-            { $sample: { size: limit || matchingProducts.length } },
+            { $sample: { size: totalProducts } },
+            { $skip: skip },
+            { $limit: limit },
           ])
           .toArray();
 
-        res.send({ status: true, data: randomProducts });
+        if (!products?.length) {
+          return res.send({ status: false, error: "No products found" });
+        }
+
+        res.send({
+          status: true,
+          data: products,
+          pagination: {
+            currentPage: page,
+            totalPages: Math.ceil(totalProducts / limit),
+            totalProducts,
+            productsPerPage: limit,
+          },
+        });
       } catch (error) {
         res.status(500).send({ status: false, error: "Internal server error" });
       }

@@ -80,6 +80,11 @@ const run = async () => {
       }
     });
 
+    app.get('/productsCount', async (req, res) => {
+      const count = await productCollection.estimatedDocumentCount();
+      res.send({ count });
+    })
+
     app.post("/products", async (req, res) => {
       const product = req.body;
 

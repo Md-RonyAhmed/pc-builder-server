@@ -51,25 +51,35 @@ const run = async () => {
     });
 
     app.get("/products/:category*", async (req, res) => {
-      const { category } = req.params;
-      const limit = Number(req.query.limit) || 0; // if no limit provided, return all
-      const decodedCategory = decodeURIComponent(category);
-      const regexCategory = new RegExp(decodedCategory, "i");
+      try {
+        const { category } = req.params;
+        const limit = Number(req.query.limit) || 0;
+        const decodedCategory = decodeURIComponent(category);
+        const regexCategory = new RegExp(decodedCategory, "i");
 
-      const cursor = await productCollection
-        .find({
-          category: regexCategory,
-        })
-        .sort({ $natural: -1 })
-        .limit(limit);
+        // প্রথমে ক্যাটাগরি অনুযায়ী সব প্রোডাক্ট খুঁজে বের করি
+        const matchingProducts = await productCollection
+          .find({
+            category: regexCategory,
+          })
+          .toArray();
 
-      const products = await cursor.toArray();
+        if (!matchingProducts?.length) {
+          return res.send({ status: false, error: "No products found" });
+        }
 
-      if (!products?.length) {
-        return res.send({ status: false, error: "No products found" });
+        // র‍্যান্ডমলি প্রোডাক্ট সিলেক্ট করি
+        const randomProducts = await productCollection
+          .aggregate([
+            { $match: { category: regexCategory } },
+            { $sample: { size: limit || matchingProducts.length } },
+          ])
+          .toArray();
+
+        res.send({ status: true, data: randomProducts });
+      } catch (error) {
+        res.status(500).send({ status: false, error: "Internal server error" });
       }
-
-      res.send({ status: true, data: products });
     });
 
     app.get("/product/:id", async (req, res) => {

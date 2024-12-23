@@ -22,23 +22,6 @@ const run = async () => {
     console.log("DB connection established");
     const productCollection = db.collection("products");
 
-    //get limited products
-    app.get("/products", async (req, res) => {
-      const limit = Number(req.query.limit);
-      const products = await productCollection
-        .find()
-        .sort({ $natural: -1 })
-        .limit(limit)
-        .toArray();
-      if (!products?.length) {
-        return res.send({ success: false, error: "No products found" });
-      }
-      res.send({
-        success: true,
-        data: products,
-      });
-    });
-
     app.get("/products", async (req, res) => {
       try {
         // Get the total number of products
@@ -69,6 +52,7 @@ const run = async () => {
 
     app.get("/products/:category*", async (req, res) => {
       const { category } = req.params;
+      const limit = Number(req.query.limit) || 0; // if no limit provided, return all
       const decodedCategory = decodeURIComponent(category);
       const regexCategory = new RegExp(decodedCategory, "i");
 
@@ -76,9 +60,14 @@ const run = async () => {
         .find({
           category: regexCategory,
         })
-        .sort({ $natural: -1 });
+        .sort({ createdAt: -1 })
+        .limit(limit);
 
       const products = await cursor.toArray();
+
+      if (!products?.length) {
+        return res.send({ status: false, error: "No products found" });
+      }
 
       res.send({ status: true, data: products });
     });

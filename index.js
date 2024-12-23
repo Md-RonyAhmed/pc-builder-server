@@ -30,17 +30,19 @@ const run = async () => {
         const search = req.query.search || "";
 
         // Create search query
-        const searchQuery = search 
+        const searchQuery = search
           ? { name: { $regex: search, $options: "i" } }
           : {};
 
         // Get total count for pagination with search
-        const totalProducts = await productCollection.countDocuments(searchQuery);
+        const totalProducts = await productCollection.countDocuments(
+          searchQuery
+        );
 
         // Get paginated and searched products
         const products = await productCollection
           .find(searchQuery)
-          .sort({ createdAt: -1 }) // Sort by newest first
+          .sort({ $natural: -1 }) // Sort by newest first
           .skip(skip)
           .limit(limit)
           .toArray();
@@ -54,8 +56,8 @@ const run = async () => {
               currentPage: page,
               totalPages: 0,
               totalProducts: 0,
-              productsPerPage: limit
-            }
+              productsPerPage: limit,
+            },
           });
         }
 
@@ -66,22 +68,22 @@ const run = async () => {
             currentPage: page,
             totalPages: Math.ceil(totalProducts / limit),
             totalProducts,
-            productsPerPage: limit
-          }
+            productsPerPage: limit,
+          },
         });
       } catch (error) {
         console.error("Error fetching products:", error);
         res.status(500).send({
           status: false,
-          error: "Internal Server Error"
+          error: "Internal Server Error",
         });
       }
     });
 
-    app.get('/productsCount', async (req, res) => {
+    app.get("/productsCount", async (req, res) => {
       const count = await productCollection.estimatedDocumentCount();
       res.send({ count });
-    })
+    });
 
     app.post("/products", async (req, res) => {
       const product = req.body;
@@ -105,7 +107,7 @@ const run = async () => {
         // Create combined query for category and search
         const query = {
           category: regexCategory,
-          ...(search ? { name: { $regex: search, $options: "i" } } : {})
+          ...(search ? { name: { $regex: search, $options: "i" } } : {}),
         };
 
         // Get total count for pagination
@@ -114,7 +116,7 @@ const run = async () => {
         // Get paginated products
         const products = await productCollection
           .find(query)
-          .sort({ createdAt: -1 }) // Sort by newest first
+          .sort({ $natural: -1 }) // Sort by newest first
           .skip(skip)
           .limit(limit)
           .toArray();
@@ -128,8 +130,8 @@ const run = async () => {
               currentPage: page,
               totalPages: 0,
               totalProducts: 0,
-              productsPerPage: limit
-            }
+              productsPerPage: limit,
+            },
           });
         }
 
@@ -140,8 +142,8 @@ const run = async () => {
             currentPage: page,
             totalPages: Math.ceil(totalProducts / limit),
             totalProducts,
-            productsPerPage: limit
-          }
+            productsPerPage: limit,
+          },
         });
       } catch (error) {
         res.status(500).send({ status: false, error: "Internal server error" });

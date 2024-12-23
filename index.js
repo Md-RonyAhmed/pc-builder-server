@@ -24,21 +24,45 @@ const run = async () => {
 
     app.get("/products", async (req, res) => {
       try {
-        // Get the total number of products
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        // Get total count for pagination
         const totalProducts = await productCollection.countDocuments();
 
-        // Use $sample to randomly select all products
+        // Get paginated and randomly ordered products
         const products = await productCollection
-          .aggregate([{ $sample: { size: totalProducts } }])
+          .aggregate([
+            { $sample: { size: totalProducts } }, // First randomize all
+            { $skip: skip }, // Then apply pagination
+            { $limit: limit },
+          ])
           .toArray();
 
-        // Send the randomly ordered products
-        res.send({ status: true, data: products });
+        if (!products?.length) {
+          return res.send({
+            status: false,
+            error: "No products found",
+          });
+        }
+
+        res.send({
+          status: true,
+          data: products,
+          pagination: {
+            currentPage: page,
+            totalPages: Math.ceil(totalProducts / limit),
+            totalProducts,
+            productsPerPage: limit,
+          },
+        });
       } catch (error) {
         console.error("Error fetching products:", error);
-        res
-          .status(500)
-          .send({ status: false, message: "Internal Server Error" });
+        res.status(500).send({
+          status: false,
+          error: "Internal Server Error",
+        });
       }
     });
 

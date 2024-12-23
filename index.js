@@ -74,7 +74,6 @@ const run = async () => {
             { $match: { category: regexCategory } },
             { $sample: { size: limit || matchingProducts.length } },
           ])
-          .sort({ $natural: -1 })
           .toArray();
 
         res.send({ status: true, data: randomProducts });

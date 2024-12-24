@@ -51,63 +51,67 @@ const run = async () => {
       );
     }
 
-    app.get("/products", async (req, res) => {
-      try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
-        const skip = (page - 1) * limit;
-        const search = req.query.search || "";
+    app.get(
+      "/products",
 
-        // Create search query
-        const searchQuery = search
-          ? { name: { $regex: search, $options: "i" } }
-          : {};
+      async (req, res) => {
+        try {
+          const page = parseInt(req.query.page) || 1;
+          const limit = parseInt(req.query.limit) || 10;
+          const skip = (page - 1) * limit;
+          const search = req.query.search || "";
 
-        // Get total count for pagination with search
-        const totalProducts = await productCollection.countDocuments(
-          searchQuery
-        );
+          // Create search query
+          const searchQuery = search
+            ? { name: { $regex: search, $options: "i" } }
+            : {};
 
-        // Get paginated and searched products
-        const products = await productCollection
-          .find(searchQuery)
-          .sort({ $natural: -1 }) // Sort by newest first
-          .skip(skip)
-          .limit(limit)
-          .toArray();
+          // Get total count for pagination with search
+          const totalProducts = await productCollection.countDocuments(
+            searchQuery
+          );
 
-        if (!products?.length) {
-          return res.send({
-            status: false,
-            error: "No products found",
-            data: [],
+          // Get paginated and searched products
+          const products = await productCollection
+            .find(searchQuery)
+            .sort({ $natural: -1 }) // Sort by newest first
+            .skip(skip)
+            .limit(limit)
+            .toArray();
+
+          if (!products?.length) {
+            return res.send({
+              status: false,
+              error: "No products found",
+              data: [],
+              pagination: {
+                currentPage: page,
+                totalPages: 0,
+                totalProducts: 0,
+                productsPerPage: limit,
+              },
+            });
+          }
+
+          res.send({
+            status: true,
+            data: products,
             pagination: {
               currentPage: page,
-              totalPages: 0,
-              totalProducts: 0,
+              totalPages: Math.ceil(totalProducts / limit),
+              totalProducts,
               productsPerPage: limit,
             },
           });
+        } catch (error) {
+          console.error("Error fetching products:", error);
+          res.status(500).send({
+            status: false,
+            error: "Internal Server Error",
+          });
         }
-
-        res.send({
-          status: true,
-          data: products,
-          pagination: {
-            currentPage: page,
-            totalPages: Math.ceil(totalProducts / limit),
-            totalProducts,
-            productsPerPage: limit,
-          },
-        });
-      } catch (error) {
-        console.error("Error fetching products:", error);
-        res.status(500).send({
-          status: false,
-          error: "Internal Server Error",
-        });
       }
-    });
+    );
 
     app.get("/productsCount", async (req, res) => {
       const count = await productCollection.estimatedDocumentCount();

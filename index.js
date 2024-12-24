@@ -1,12 +1,18 @@
 require("dotenv").config();
+const cors = require("cors");
 const express = require("express");
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const app = express();
 const port = process.env.PORT || 5000;
 
-const cors = require("cors");
+const corsConfig = {
+  origin: true,
+  credentials: true,
+};
 
-app.use(cors());
+app.use(cors(corsConfig));
+app.options("*", cors(corsConfig));
+
 app.use(express.json());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@tech-net.wrygwyk.mongodb.net/?retryWrites=true&w=majority`;
@@ -21,6 +27,29 @@ const run = async () => {
     const db = client.db("sunnah-store");
     console.log("DB connection established");
     const productCollection = db.collection("products");
+    const userCollection = client.db("products").collection("users");
+    const ordersCollection = client.db("products").collection("orders");
+    const profileCollection = client.db("products").collection("userProfile");
+    const reviewsCollection = client.db("products").collection("reviews");
+
+    function verifyJWT(req, res, next) {
+      const authHeader = req.headers.authorization;
+      if (!authHeader) {
+        return res.status(401).send({ message: "Unauthorized access" });
+      }
+      const token = authHeader.split(" ")[1];
+      jwt.verify(
+        token,
+        process.env.ACCESS_TOKEN_SECRET,
+        function (err, decoded) {
+          if (err) {
+            return res.status(403).send({ message: "Forbidden access" });
+          }
+          req.decoded = decoded;
+          next();
+        }
+      );
+    }
 
     app.get("/products", async (req, res) => {
       try {

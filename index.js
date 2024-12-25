@@ -284,6 +284,22 @@ const run = async () => {
       }
     });
 
+     //get orders with email
+     app.get("/orders", verifyToken, async (req, res) => {
+      const email = req.query.email;
+      const decodedEmail = req.decoded.email;
+      if (email === decodedEmail) {
+        const query = { email: email };
+        const orders = await ordersCollection.find(query).toArray();
+        res.send({
+          success: true,
+          data: orders,
+        });
+      } else {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+    });
+
     // category related api
     app.get("/category", async (req, res) => {
       const result = await categoryCollection.find().toArray();

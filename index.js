@@ -1,5 +1,6 @@
 require("dotenv").config();
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
 const express = require("express");
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const app = express();
@@ -27,12 +28,22 @@ const run = async () => {
     const db = client.db("sunnah-store");
     console.log("DB connection established");
     const productCollection = db.collection("products");
-    const userCollection = client.db("products").collection("users");
-    const ordersCollection = client.db("products").collection("orders");
-    const profileCollection = client.db("products").collection("userProfile");
-    const reviewsCollection = client.db("products").collection("reviews");
+    const userCollection = db.collection("users");
+    const ordersCollection = db.collection("orders");
+    const profileCollection = db.collection("userProfile");
+    const reviewsCollection = db.collection("reviews");
+    const categoryCollection = db.collection("categories");
 
-    function verifyJWT(req, res, next) {
+    // jwt related api
+    app.post("/jwt", async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "6h",
+      });
+      res.send({ token });
+    });
+
+    function verifyToken(req, res, next) {
       const authHeader = req.headers.authorization;
       if (!authHeader) {
         return res.status(401).send({ message: "Unauthorized access" });
@@ -51,67 +62,115 @@ const run = async () => {
       );
     }
 
-    app.get(
-      "/products",
+    // use verify admin after verifyToken
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const isAdmin = user?.role === "admin";
+      if (!isAdmin) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      next();
+    };
 
-      async (req, res) => {
-        try {
-          const page = parseInt(req.query.page) || 1;
-          const limit = parseInt(req.query.limit) || 10;
-          const skip = (page - 1) * limit;
-          const search = req.query.search || "";
+    // users related api
+    app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    });
 
-          // Create search query
-          const searchQuery = search
-            ? { name: { $regex: search, $options: "i" } }
-            : {};
+    app.get("/users/admin/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
 
-          // Get total count for pagination with search
-          const totalProducts = await productCollection.countDocuments(
-            searchQuery
-          );
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
 
-          // Get paginated and searched products
-          const products = await productCollection
-            .find(searchQuery)
-            .sort({ $natural: -1 }) // Sort by newest first
-            .skip(skip)
-            .limit(limit)
-            .toArray();
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      let admin = false;
+      if (user) {
+        admin = user?.role === "admin";
+      }
+      res.send({ admin });
+    });
 
-          if (!products?.length) {
-            return res.send({
-              status: false,
-              error: "No products found",
-              data: [],
-              pagination: {
-                currentPage: page,
-                totalPages: 0,
-                totalProducts: 0,
-                productsPerPage: limit,
-              },
-            });
-          }
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      const query = { email: user.email };
+      const existingUser = await userCollection.findOne(query);
+      if (existingUser) {
+        return res.send({ message: "user already exists", insertedId: null });
+      }
+      const result = await userCollection.insertOne(user);
+      res.send(result);
+    });
 
-          res.send({
-            status: true,
-            data: products,
+    app.delete("/users/:id", verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: id };
+      const result = await userCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    app.get("/products", async (req, res) => {
+      try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+        const search = req.query.search || "";
+
+        // Create search query
+        const searchQuery = search
+          ? { name: { $regex: search, $options: "i" } }
+          : {};
+
+        // Get total count for pagination with search
+        const totalProducts = await productCollection.countDocuments(
+          searchQuery
+        );
+
+        // Get paginated and searched products
+        const products = await productCollection
+          .find(searchQuery)
+          .sort({ $natural: -1 }) // Sort by newest first
+          .skip(skip)
+          .limit(limit)
+          .toArray();
+
+        if (!products?.length) {
+          return res.send({
+            status: false,
+            error: "No products found",
+            data: [],
             pagination: {
               currentPage: page,
-              totalPages: Math.ceil(totalProducts / limit),
-              totalProducts,
+              totalPages: 0,
+              totalProducts: 0,
               productsPerPage: limit,
             },
           });
-        } catch (error) {
-          console.error("Error fetching products:", error);
-          res.status(500).send({
-            status: false,
-            error: "Internal Server Error",
-          });
         }
+
+        res.send({
+          status: true,
+          data: products,
+          pagination: {
+            currentPage: page,
+            totalPages: Math.ceil(totalProducts / limit),
+            totalProducts,
+            productsPerPage: limit,
+          },
+        });
+      } catch (error) {
+        console.error("Error fetching products:", error);
+        res.status(500).send({
+          status: false,
+          error: "Internal Server Error",
+        });
       }
-    );
+    });
 
     app.get("/productsCount", async (req, res) => {
       const count = await productCollection.estimatedDocumentCount();
@@ -120,9 +179,7 @@ const run = async () => {
 
     app.post("/products", async (req, res) => {
       const product = req.body;
-
-      const result = await productCollection.insertMany(product);
-
+      const result = await productCollection.insertOne(product);
       res.send(result);
     });
 
@@ -192,13 +249,44 @@ const run = async () => {
       res.send(result);
     });
 
-    app.delete("/product/:id", async (req, res) => {
+    app.delete("/product/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
 
       const result = await productCollection.deleteOne({
         _id: id,
       });
       // console.log(result);
+      res.send(result);
+    });
+
+    //post place orders
+    app.post("/orders", verifyToken, async (req, res) => {
+      try {
+        const orders = req.body;
+        const result = await ordersCollection.insertOne(orders);
+
+        // Get the order with _id from MongoDB
+        const insertedOrder = await ordersCollection.findOne({
+          _id: result.insertedId,
+        });
+
+        res.send({
+          success: true,
+          message: "Order placed Successfully",
+          order: insertedOrder, // এখানে পুরো অর্ডার অবজেক্ট পাঠাচ্ছি যেখানে _id থাকবে
+        });
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: "Failed to place order",
+          error: error.message,
+        });
+      }
+    });
+
+    // users related api
+    app.get("/category", async (req, res) => {
+      const result = await categoryCollection.find().toArray();
       res.send(result);
     });
 

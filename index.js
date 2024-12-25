@@ -284,7 +284,7 @@ const run = async () => {
       }
     });
 
-    // users related api
+    // category related api
     app.get("/category", async (req, res) => {
       const result = await categoryCollection.find().toArray();
       res.send(result);

@@ -6,6 +6,12 @@ const { MongoClient, ServerApiVersion } = require("mongodb");
 const app = express();
 const port = process.env.PORT || 5000;
 
+const multer = require("multer");
+const { storage } = require("./cloudinaryConfig");
+
+// Initialize Multer with Cloudinary storage
+const upload = multer({ storage });
+
 const corsConfig = {
   origin: true,
   credentials: true,
@@ -114,17 +120,65 @@ const run = async () => {
       res.send(result);
     });
 
-    
+    // Create a new product with image upload
+    // app.post(
+    //   "/add-product",
+    //   // upload.single("productImage"),
+    //   // verifyToken,
+    //   // verifyAdmin,
+    //   async (req, res) => {
+
+    //     try {
+    //       const product = req.body;
+    //       console.log(product)
+    //       // // Handle keyFeatures: ensure it's an array
+    //       // let parsedKeyFeatures = [];
+    //       // if (typeof keyFeatures === "string") {
+    //       //   parsedKeyFeatures = JSON.parse(keyFeatures);
+    //       // } else if (Array.isArray(keyFeatures)) {
+    //       //   parsedKeyFeatures = keyFeatures;
+    //       // }
+
+    //       // Handle product image
+    //       // let imageUrl = "";
+    //       // if (req.file && req.file.path) {
+    //       //   imageUrl = req.file.path; // Cloudinary URL
+    //       // } else {
+    //       //   return res
+    //       //     .status(400)
+    //       //     .json({ message: "Product image is required." });
+    //       // }
+
+    //       // console.log("file"+ req.body.productImage)
+    //       console.log("body"+ req.body)
+
+    //       // const newProduct = {
+    //       //   ...product,
+    //       //   // image: imageUrl,
+    //       //   createdAt: new Date(),
+    //       // };
+
+    //       // const result = await productCollection.insertOne(newProduct);
+
+    //       res.status(201).json({
+    //         success: true,
+    //         message: "Product added successfully.",
+    //         // product: newProduct,
+    //         // insertedId: result.insertedId,
+    //       });
+    //     } catch (error) {
+    //       console.error("Error adding product:", error);
+    //       res.status(500).json({
+    //         success: false,
+    //         message: "Internal Server Error",
+    //         error: error.message,
+    //       });
+    //     }
+    //   }
+    // );
+
     // Get all products (non-paginated)
     app.get("/products/all", verifyToken, verifyAdmin, async (req, res) => {
-      const email = req.query.email;
-      const decodedEmail = req.decoded.email;
-
-      // Check if the requesting user's email matches the decoded email
-      if (email !== decodedEmail) {
-        return res.status(403).send({ message: "forbidden access" });
-      }
-
       try {
         const products = await productCollection.find({}).toArray();
         res.send({
@@ -266,7 +320,6 @@ const run = async () => {
       }
     });
 
-
     app.get("/product/:id", async (req, res) => {
       const id = req.params.id;
 
@@ -282,7 +335,7 @@ const run = async () => {
     //   const result = await productCollection.deleteOne({
     //     _id: id,
     //   });
-      // console.log(result);
+    // console.log(result);
     //   res.send(result);
     // });
 

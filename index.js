@@ -284,8 +284,8 @@ const run = async () => {
       }
     });
 
-     //get orders with email
-     app.get("/orders", verifyToken, async (req, res) => {
+    //get orders with email
+    app.get("/order", verifyToken, async (req, res) => {
       const email = req.query.email;
       const decodedEmail = req.decoded.email;
       if (email === decodedEmail) {
@@ -297,6 +297,32 @@ const run = async () => {
         });
       } else {
         return res.status(403).send({ message: "forbidden access" });
+      }
+    });
+
+    //get all orders
+    app.get("/orders", verifyToken, verifyAdmin, async (req, res) => {
+      const email = req.query.email;
+      const decodedEmail = req.decoded.email;
+
+      // Check if the requesting user's email matches the decoded email
+      if (email !== decodedEmail) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+
+      try {
+        // If the user is an admin, fetch all orders
+        const orders = await ordersCollection.find({}).toArray();
+        res.send({
+          success: true,
+          data: orders,
+        });
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: "Error fetching orders",
+          error: error.message
+        });
       }
     });
 

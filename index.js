@@ -114,6 +114,32 @@ const run = async () => {
       res.send(result);
     });
 
+    
+    // Get all products (non-paginated)
+    app.get("/products/all", verifyToken, verifyAdmin, async (req, res) => {
+      const email = req.query.email;
+      const decodedEmail = req.decoded.email;
+
+      // Check if the requesting user's email matches the decoded email
+      if (email !== decodedEmail) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+
+      try {
+        const products = await productCollection.find({}).toArray();
+        res.send({
+          status: true,
+          data: products,
+        });
+      } catch (error) {
+        console.error("Error fetching all products:", error);
+        res.status(500).send({
+          status: false,
+          error: "Internal Server Error",
+        });
+      }
+    });
+
     app.get("/products", async (req, res) => {
       try {
         const page = parseInt(req.query.page) || 1;
@@ -240,6 +266,7 @@ const run = async () => {
       }
     });
 
+
     app.get("/product/:id", async (req, res) => {
       const id = req.params.id;
 
@@ -249,15 +276,15 @@ const run = async () => {
       res.send(result);
     });
 
-    app.delete("/product/:id", verifyToken, async (req, res) => {
-      const id = req.params.id;
+    // app.delete("/product/:id", verifyToken, async (req, res) => {
+    //   const id = req.params.id;
 
-      const result = await productCollection.deleteOne({
-        _id: id,
-      });
+    //   const result = await productCollection.deleteOne({
+    //     _id: id,
+    //   });
       // console.log(result);
-      res.send(result);
-    });
+    //   res.send(result);
+    // });
 
     //post place orders
     app.post("/orders", verifyToken, async (req, res) => {
@@ -321,7 +348,7 @@ const run = async () => {
         res.status(500).send({
           success: false,
           message: "Error fetching orders",
-          error: error.message
+          error: error.message,
         });
       }
     });
